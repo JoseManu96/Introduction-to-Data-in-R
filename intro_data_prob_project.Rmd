@@ -1,0 +1,618 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+    
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+This dataset, BRFSS 2013, was sampled from more than 400,000 interviews pertain to the non-institutionalized adult population, aged 18 years or older, who reside in the US. In 2013, additional question sets were included as optional modules to provide a measure for several childhood health and wellness indicators, including asthma prevalence for people aged 17 years or younger. Collected samples of interviews conducted both by landline telephone and cellular telephone.
+
+All participating areas met this criterion in 2013. Fifty-one projects used a disproportionate stratified sample (DSS) design for their landline samples. Guam and Puerto Rico used a simple random-sample design. The target population for cellular telephone samples in 2013 consists of persons residing in a private residence or college housing, who have a working cellular telephone, are aged 18 and older, and received 90 percent or more of their calls on cellular telephones.
+
+As random sampling was used for both data collection methods, the results are generalizable to the population (a model learned can be applied in any context). But it won't be possible to do causal inference.
+
+
+
+## Part 2: Research questions
+
+**Research quesion 1:** 
+
+Does a college or a technical degree improve graduates’ employment and earnings potential?
+
+
+Recent studies speak of the impact of being a university graduate or technical school graduate when someone is looking for a job and better earnings, so we will study that relation.
+
+**Research quesion 2:**
+
+Do marriage have positive aspects compared to other marital statuses?
+
+A person might think that marriage has certain benefits in today's society (i.e better incomes, emotional support, owners of a house), that's why we will analyze the sample "Married" and the positive aspects that marriage has in comparison with other marital statuses.
+
+**Research quesion 3:**
+
+Does consuming vegetables and fruits have a positive impact on health?
+
+The consumption of fruits or vegetables is good for your health, however,the consumption of both can be more effective for the health? This is a question that we will try to answer.
+* * *
+
+## Part 3: Exploratory data analysis
+
+
+**Research quesion 1:**
+Does a college or a technical degree improve graduates’ employment and earnings potential?
+
+For our first question we will use the variables below:
+
+
+  * _educag: Computed Level Of Education Completed Categories.
+  * _incomg: Computed Income Categories.
+  * employ1: Employ status.
+
+
+Let see the structure of our variables
+
+```{r}
+str(select(brfss2013,X_educag,X_incomg,employ1))
+```
+As we can see all three variables are type factor, with 6 levels,8 levels and 8 levels, respectively. 
+
+Now lets check the frequency of each one of those variables in our dataset. 
+
+```{r}
+ggplot(brfss2013, aes(x=X_educag)) + 
+  geom_bar() + 
+  ggtitle("Frequencies of education completed categories") + 
+  xlab("Education completed categories") + ylab("Frequencies")+theme_bw()+theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+```
+
+The Figure above shows that most of people graduates from technical school or college, the second most frequent are graduate from high school, third  most frequent are attend to college or technical school (but not finish) and fourth most frequent are those who did not graduate high school. As we can see there's also an small number of NA so we cannot classify them. We have an idea of the frequencies but we don't know the exact number represented in the Figure so we will compute them using the functions summarise() and group_by().
+
+
+```{r}
+total_pop <- length(brfss2013$X_educag)
+freq_ecc <- brfss2013 %>% group_by(X_educag) %>% summarise(freq=n(), percent=round(n()/total_pop,4)) 
+freq_ecc
+```
+
+We calculate the frequencies and the percentages that each categories represents from the sample and now we will see the relation with the income level.
+
+But first we will make a change in the name of each level of the variable X_incomg, because the description of each level is too large. The legend of the changes will be the next:
+
+
+  *  I1 : Less than \$15,000.
+  *  I2 : \$15,000 to less than \$25,000.
+  *  I3:  \$25,000 to less than \$35,000.
+  *  I4 : \$35,000 to less than \$50,000.
+  *  I5 : \$50,000 or more.
+
+
+
+```{r}
+levels(brfss2013$X_incomg) <- c("I1", "I2","I3","I4","I5")
+edu_inco <- table(brfss2013$X_educag,brfss2013$X_incomg)
+edu_inco
+```
+
+The table shows that those who are Graduated from college or technical school have better incomes, specially in the income level \$50,000 or more, the difference is significant in comparison with other categories of completed education level. Let's take a look to the proportions of the above table, so we can make a better analysis.
+
+
+```{r}
+round(prop.table(edu_inco,1),3)
+```
+
+As we can see in the contingency tables above, approximately 13\% of those who graduate from college or technical school belong to the income level \$35,000 to less than \$50,000 and approximately 68\% of those who graduate from college or technical school belong to the income level \$50,000 or more. Based on this results we make the next Figure.
+
+
+```{r}
+ggplot(brfss2013, aes(x = X_educag, fill = X_incomg)) + geom_bar()+theme(axis.text.x = element_text(angle = 28, hjust = 1))+xlab("Level Of Education Completed Categories")+ylab("Frequencies")+labs(fill="Income levels")
+```
+
+There's a clear tendency that people with higher educational level have better incomes, which is represented by I5 given the change we make earlier, so we will take a look now of the relation between educational level completed and employ status.
+
+But first, as we did with the variable X_incomg, we will change the names of the levels of the variable employ1. The legend of the changes is the next:
+
+
+  *  E1 : Employed for wages.
+  *  E2 : Self-employed.
+  *  E3:  Out of work for 1 year or more.
+  *  E4 : Out of work for less than 1 year.
+  *  E5 : A homemaker.
+  *  E6 : A student.
+  *  E7 : Retired.
+    E8 : Unable to work.
+
+
+
+```{r}
+levels(brfss2013$employ1) <- c("E1", "E2","E3","E4","E5","E6","E7","E8")
+edu_empl <- table(brfss2013$X_educag,brfss2013$employ1)
+edu_empl
+```
+
+Once again the people who graduate from college or technical school or attend to college or technical school represents a great number in the employ status of Employed for wages and Self employed. Now we will compute the proportions of the number of the contingency table.
+
+
+```{r}
+round(prop.table(edu_empl,1),3)
+```
+
+Approximately 51\% of the people who graduate from college or technical school are employed for wages and approximately a 10\% are self-employed. Also we can see that approximately 42\% of those who attend college or technical school are employed for wages and approximately 8\% is self-employed. In comparison with other categories of completed education levels, the ones we mention before have highest percents of employed for wages and self-employed, and as it shows this percents increases in order of the completed education level. 
+
+
+```{r}
+ggplot(brfss2013, aes(x = X_educag, fill = employ1)) + geom_bar()+theme(axis.text.x = element_text(angle = 28, hjust = 1))+xlab("Level Of Education Completed Categories")+ylab("Frequencies")+labs(fill="Employ status")
+```
+
+The Figure shows what we comment before, the employ status is influenced by the level of education completed, actually as it shows is directly proportional, so we can expect that a person with a college or a technical degree has a better employment and earnings potential.
+
+**Research quesion 2:**
+
+Do marriage have positive aspects compared to other marital statuses?
+
+To answer this question we will use the next variables:
+
+
+  * marital: Marital Status.
+  * menthlth: Number Of Days Mental Health Not Good.
+  * renthom1: Own Or Rent Home.
+  * _incomg: Computed Income Categories.
+
+
+Let's check the structure of these variables:
+
+
+```{r}
+str(select(brfss2013,marital,renthom1,X_incomg,menthlth))
+```
+
+Let's take a look to the frequencies of the marital statuses.
+
+
+```{r}
+ggplot(brfss2013, aes(x=marital)) + 
+  geom_bar() + 
+  ggtitle("Frequencies of marital statuses") + 
+  xlab("Marital Status") + ylab("Frequencies")+theme_bw()+theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+
+The frequency of Married is very high in comparison with other marital statuses. Let's compute the exact values that this frequency represents of the total of marital statuses.
+
+
+```{r}
+total_ms <- length(brfss2013$marital)
+freq_ms <- brfss2013 %>% group_by(marital) %>% summarise(freq=n(), percent=round(n()/total_ms,4)) 
+freq_ms
+```
+
+
+Approximately 52\% of the sample is Married, approximately 15\% of the sample Never married, approximately 14\% of the sample is Divorced, approximately 13\% of the sample is Widowed, approximately 3\% of the sample is Separated and there's approximately 1\% with marital status unknown (NA). It's clear that the percent of Married people is high, more than 3 times the second marital status more frequent.
+
+Now that we know the proportions, let's take a look to the relation between marital status and mental health. For this analysis we will work with the variable that represents Number Of Days Mental Health Not Good.
+
+
+```{r}
+brfss2013<-brfss2013 %>% filter(menthlth<=30)
+mental_marital=brfss2013 %>% group_by(marital)%>% summarise(mean_menthlth=mean(menthlth,na.rm = T))
+mental_marital
+```
+
+
+Let's visualize this results.
+
+
+```{r}
+ggplot(mental_marital, aes(x=marital,y=mean_menthlth,fill=(marital=="Married"))) +geom_bar(stat='identity') + ggtitle('Do Married people have better mental health?') + xlab('Marital Status') + ylab('Days with poor mental health') + theme(axis.text.x = element_text(angle = 28, hjust = 1))+labs(fill="Married")
+```
+
+The mean of the Number of Days Mental Health Not Good of the Married people, marked with blue color, is smaller in comparison with the other marital statuses, so in principle married people have less days of not good mental health.  
+The next step in our analysis is to check the relation between Marital Status and Own Or Rent Home.
+
+
+```{r}
+own_rent=table(brfss2013$marital,brfss2013$renthom1)
+own_rent
+```
+
+The contingency table tell us that a great number of Married own a house. We saw that the number of Married were almost half of the sample, but we don't know the proportions, so we will calculate them. 
+
+
+```{r}
+prop.table(own_rent,1)
+```
+
+Approximately 86\% of the Married own a house, approximately 79\% of the Widowed own a house and approximately 61\% of Divorced own a house, the rest of the marital statuses have a percent below the 50\%. Once again the Marriage have a benefit, in this case of type Social, that is own a house, which can be associated to stability. 
+
+Let's visualize this results.
+
+```{r}
+ggplot(brfss2013, aes(x = marital, fill = renthom1)) + geom_bar()+theme(axis.text.x = element_text(angle = 28, hjust = 1))+xlab("Marital Status")+ylab("Frequencies")+labs(fill="Own Or Rent Home")
+```
+
+Even if the sample of Never Married and A member of an unmarried couple is smaller than the Married, it's clear that those groups have less stability, in the sense that more than the half of people who belong to these groups lives in a rental house or they have some arrangement.
+
+Lastly let's take a look to the relation between Marital status and Computed Income Categories.
+
+Let's first remember the changes we made to the names of the levels of the variable X_incomg:
+
+
+  *  I1 : Less than \$15,000.
+  *  I2 : \$15,000 to less than \$25,000.
+  *  I3:  \$25,000 to less than \$35,000.
+  *  I4 : \$35,000 to less than \$50,000.
+  *  I5 : \$50,000 or more.
+
+
+```{r}
+inc_marital=table(brfss2013$marital,brfss2013$X_incomg)
+inc_marital
+```
+
+The contingency table shows in the last three columns that most of Married people have incomes in the categories of "\$35,000 to less than \$50,000" and  "\$50,000 or more", but what is the percent that these numbers represent for each marital status?
+
+
+```{r}
+prop.table(inc_marital,1)
+```
+
+Let's visualize this results.
+
+
+```{r}
+ggplot(brfss2013, aes(x = marital, fill = X_incomg)) + geom_bar()+theme(axis.text.x = element_text(angle = 28, hjust = 1))+xlab("Marital Status")+ylab("Frequencies")+labs(fill="Income level categories")
+```
+
+Once we compuete the proportion table we can see that approximately 61\% of Married people have incomes in the category "\$50,000 or more" and approximately 15\% have incomes in the category "\$35,000 to less than \$50,000". These percents are the highest for a Marital Status, so in this case the tendency is clear.
+
+After our analysis we can conclude that Married people in comparison with the other marital statuses have positive aspects, that can be associated with greater stability, in the social, mental and economic sense.
+
+
+**Research quesion 3:**
+
+Does consuming vegetables and fruits have a positive impact on general health?
+
+To answer this question we will use the following variables:
+
+
+  * _frtlt1: Consume Fruit 1 Or More Times Per Day.
+  * _veglt1: Consume Vegetables 1 Or More Times Per Day. 
+  * _bmi5cat: Computed Body Mass Index Categories.
+  * physhlth: Number Of Days Physical Health Not Good.
+  * genhlth: General Health.
+
+
+
+```{r}
+str(select(brfss2013,X_frtlt1,X_veglt1,X_bmi5cat,physhlth,genhlth))
+```
+
+We will start our analysis with the sample who Consume Fruit 1 Or More Times Per Day.
+
+First we will make a change in the names of the levels of the variables X_frtlt1, following the next legend:
+
+
+  * F1: Consumed fruit 1 Or More Times Per Day.
+  * F0: Consumed fruit less than one time per day. 
+
+
+
+```{r}
+levels(brfss2013$X_frtlt1) <- c("F1", "F0")
+ggplot(brfss2013, aes(x=X_frtlt1)) + 
+  geom_bar() + 
+  ggtitle("Frequencies of Fruit Consumption") + 
+  xlab("Computed Fruit Consumption") + ylab("Frequencies")+theme_bw()
+
+```
+
+As we can see there's more people that consume one or more fruits per day in comparison with those who consume less than one fruit per day. Now let's take a look at the exact number that these frequencies represent.
+
+
+```{r}
+total_fc <- length(brfss2013$X_frtlt1)
+freq_fc <- brfss2013 %>% group_by(X_frtlt1) %>% summarise(freq=n(), percent=round(n()/total_fc,4)) 
+freq_fc
+```
+
+
+Approximately 60\% of the sample consume fruit one or more per day, on the other hand approximately 35\% of the sample consume less than a fruit per day. The next thing that we will do is analyze the relation between the Consume Fruit 1 Or More Times Per Day and the Computed Body Mass Index Categories.
+
+
+```{r}
+bm_fc<-table(brfss2013$X_frtlt1,brfss2013$X_bmi5cat)
+bm_fc
+```
+
+If we take a look to the contingency table we can notice that people who eat fruits appear as the most repeated in each category, specially in the categories of "Normal weight" and "Overweight". Let's compute the proportions of the table above.
+
+
+```{r}
+prop.table(bm_fc,1)
+```
+
+The proportions show that approximately the 35\% of the people who consume fruit  has "Normal weight" and approximately 36\% has "Overweight", which represents a higher percent in comparison with the people who consume less than a fruit per day. On the other hand, the percents of people who consume fruit one or more times per day and has "Underweight" or "Obesity" is smaller in comparison with the percent of the people who consume fruit less than  one time per day, so we can say that the consume of fruit it's good for health.
+
+Let's visualize this results.
+
+
+```{r}
+ggplot(brfss2013, aes(x = X_frtlt1, fill = X_bmi5cat)) + geom_bar()+xlab("Consume Fruit 1 Or More Times Per Day")+ylab("Frequencies")+labs(fill="Computed Body Mass Index Categories")
+```
+
+
+Now we will analyze the relation between the consume of fruits one or more times per day and th physical health.
+
+
+```{r}
+brfss2013=brfss2013%>% filter(brfss2013$physhlth<=30)
+ph_fc<-brfss2013%>% group_by(X_frtlt1) %>% summarise(mean_phlth=mean(physhlth))
+ph_fc
+```
+
+
+The mean of the Number Of Days Physical Health Not Good of the level "F1" ("Consumed fruit 1 Or More Times Per Day") is smaller than the level "F0" ("Consumed fruit less than one time per day"). This will tell us that the consumption of fruits have an positive impact in the physical health, maybe in part for the vitamins that each fruit contain.
+
+Let see the graph.
+
+
+```{r}
+ggplot(ph_fc, aes(x=X_frtlt1,y=mean_phlth,fill=(X_frtlt1=="F1"))) +geom_bar(stat='identity') + ggtitle('Do people who consume fruits have better physical health?') + xlab('Consume fruit 1 Or More Times Per Day') + ylab('Days with poor physical health') +labs(fill="F1")
+```
+
+In blue we can see the bar which represents the mean of days of poor physical health of the people who consume fruits 1 or more times per day, and as we calculate before is smaller than the rest of the bars.
+
+Finally let's take a look to the relation between the consume of fruits one or more times per day and the general health.
+
+
+```{r}
+genhlth_fc<-table(brfss2013$X_frtlt1,brfss2013$genhlth)
+genhlth_fc
+```
+
+Now let's take a look to the proportions to make an analysis with more elements.
+
+
+```{r}
+prop.table(genhlth_fc,1)
+```
+
+The percents of people who consume fruit 1 or more times per day who has general health "Excellent" and "Very Good" is higher than the percent of people who consume fruits less than 1 time per day. 
+
+Let's take a look to the graph.
+
+
+```{r}
+ggplot(brfss2013, aes(x = X_frtlt1, fill = genhlth)) + geom_bar()+xlab("Consume Fruit 1 Or More Times Per Day")+ylab("Frequencies")+labs(fill="General Health")
+```
+
+In summary those who consume fruit 1 or more times per day have better general health, physical health and a good body mass index in comparison with the people who consume less than 1 time per day.
+
+Let's make the same analysis for the vegetable consumption:
+
+We start by changing the names of the levels just like we did before. We will follow the next legend:
+
+
+  * V1: Consumed vegetables one or more times per day.
+  * V0: Consumed vegetables less than one time per day. 
+
+
+
+```{r}
+levels(brfss2013$X_veglt1) <- c("V1", "V0")
+ggplot(brfss2013, aes(x=X_veglt1)) + 
+  geom_bar() + 
+  ggtitle("Frequencies of Vegetables Consumption") + 
+  xlab("Computed Vegetables Consumption") + ylab("Frequencies")+theme_bw()
+```
+
+The consumption of vegetables one or more times per days is more frequent than the consumption of vegetables less than one times per day actually is even more frequent the consume of vegetables than the consume of fruits.
+
+Let's compute the exact figures.
+
+
+```{r}
+total_vc <- length(brfss2013$X_veglt1)
+freq_vc <- brfss2013 %>% group_by(X_veglt1) %>% summarise(freq=n(), percent=round(n()/total_vc,4)) 
+freq_vc
+```
+
+Now that we know the exact frequency of people who consume vegetables 1 or more times we will analyze the relation between the vegetables consumption and the computed body mass index.
+
+
+```{r}
+bm_vc<-table(brfss2013$X_veglt1,brfss2013$X_bmi5cat)
+bm_vc
+```
+
+Let's calculate the proportions and then we will make an anaysis.
+
+```{r}
+prop.table(bm_vc,1)
+```
+
+The percents obtained are similar to the percents of the fruit consumption, maybe the difference between the percents of the people who consume vegetables 1 or more times per days who has "Underweight" is bigger in comparison with the people who consume vegetables less than 1 time per day and has "Underweight", but like we said the behavior is similar.
+
+Let see the graph.
+
+
+```{r}
+ggplot(brfss2013, aes(x = X_veglt1, fill = X_bmi5cat)) + geom_bar()+xlab("Consume Vegetables 1 Or More Times Per Day")+ylab("Frequencies")+labs(fill="Computed Body Mass Index Categories")
+```
+
+The next thing to do is analyze the relation between the consume of vegetables one or more times per day and th physical health.
+
+
+```{r}
+ph_vc<-brfss2013%>% group_by(X_veglt1) %>% summarise(mean_phlth=mean(physhlth))
+ph_vc
+```
+
+There's a difference of Number Of Days Physical Health Not Good, if we look at the means the difference is more than one day of physical health not good for those who consume vegetables less than 1 time per day. This difference is even bigger that the difference between "consume fruit one or more times" and "consume fruit less than one time", so it's clear that the consumption of vegetables is very important for the physical health.
+
+Let's visualize the results.
+
+
+```{r}
+ggplot(ph_vc, aes(x=X_veglt1,y=mean_phlth,fill=(X_veglt1=="V1"))) +geom_bar(stat='identity') + ggtitle('Do people who consume vegetables have better physical health?') + xlab('Consume vegetables 1 Or More Times Per Day') + ylab('Days with poor physical health') +labs(fill="V1")
+```
+
+In blue we can see the bar which represents the mean of days of poor physical health of the people who consume vegetables 1 or more times per day, and as we calculate before is smaller than the rest of the bars.
+
+Finally let's take a look to the relation between the consume of vegetables one or more times per day and the general health.
+
+
+```{r}
+genhlth_vc<-table(brfss2013$X_veglt1,brfss2013$genhlth)
+genhlth_vc
+```
+
+Now let's take a look to the proportions to make an analysis with more elements.
+
+
+```{r}
+prop.table(genhlth_vc,1)
+```
+
+As we can see the percent of people who "consume vegetables one or more times per day" and have an "Excellent" general health is approximately 19\% and the percent of people who "consume vegetables one or more times per day" who have a "Very good" general health is approximately 35\%. Those percents are higher that the percents of the sample that "consume vegetables less than 1 time per day". On the other hand the percent of people who "consume vegetables one or more times per day" and have a general status of "Fair" or "Poor" is smaller, which tell us once again that the consumption of vegetables is very important for our health, in a general way.
+
+Let's take a look to the graph.
+
+
+```{r}
+ggplot(brfss2013, aes(x = X_veglt1, fill = genhlth)) + geom_bar()+xlab("Consume Vegetables 1 Or More Times Per Day")+ylab("Frequencies")+labs(fill="General Health")
+```
+
+Now we will create a new variable, which we will call vgtlfrt, of type categorical, with the next levels:
+
+
+  * VF1: Consumed vegetables and fruits one or more times per day.
+  * VF0: Consumed vegetables or fruits less than one time per day. 
+  * Not labeled: The observation has an NA in one level of the variable _veglt1 or _frtlt1.
+
+
+
+```{r}
+index=which(brfss2013$X_frtlt1=="F1" & brfss2013$X_veglt1=="V1")
+brfss2013<- brfss2013%>% mutate(vgtlfrt="VF0")
+brfss2013$vgtlfrt[index]="VF1"
+index2<-which(is.na(brfss2013$X_frtlt1) | is.na(brfss2013$X_veglt1))
+brfss2013$vgtlfrt[index2]="Not labeled"
+```
+
+
+As we can see the new variable assigns "VF1" if the person consume vegetables or fruit one or more times per day, assigns "VF0" if the person consume fruits or vegetables less than one time per day, and "Not labeled" if at least one of the variables, _veglt1 or _frtlt1, have an NA in that row . Now we will see the frequency.
+
+
+```{r}
+ggplot(brfss2013, aes(x=vgtlfrt)) + 
+  geom_bar() + 
+  ggtitle("Frequencies of Fruit and Vegetables Consumption") + 
+  xlab("Computed Fruit and Vegetables Consumption") + ylab("Frequencies")+theme_bw()
+```
+
+As we can see the levels have a high frequency, except the one that we assign "Not labeled", but let's take a look to the exact values.
+
+
+```{r}
+total_vfc <- length(brfss2013$vgtlfrt)
+freq_vfc <- brfss2013 %>% group_by(vgtlfrt) %>% summarise(freq=n(), percent=round(n()/total_vfc,4)) 
+freq_vfc
+```
+
+The people who consume vegetables and fruits one or more times per day represent approximately the 51\% of the sample, and the people who consume vegetables or fruits less than one time per day represent approximately the 43\% of the sample. This says that almost half of the sample just consume vegetables or fruits, but not both, and an small percent don't have label.
+
+Now we will make the same analysis that we did for the other variables. Let's begin with the relation between the consume of fruits and vegetables one or more times per day and the computed body mass index.
+
+
+```{r}
+bm_vfc<-table(brfss2013$vgtlfrt,brfss2013$X_bmi5cat)
+bm_vfc
+```
+
+Let's compute the proportions to make a better analysis.
+
+
+```{r}
+prop.table(bm_vfc,1)
+```
+
+The proportion table shows that the people who consume fruit and vegetable one or more times per day have an percent of  "Normal weight", "Overweight", higher than other levels, but have an smaller percent of "Obese" and "Underweight", which tell us that those who consume both, fruits and vegetables, are healthier.
+
+Let's visualize the results.
+
+
+```{r}
+ggplot(brfss2013, aes(x = vgtlfrt, fill = X_bmi5cat)) + geom_bar()+xlab("Consume Vegetables and Fruits 1 Or More Times Per Day")+ylab("Frequencies")+labs(fill="Computed Body Mass Index Categories")
+```
+
+The next thing to do is analyze the relation between the consume of vegetables one or more times per day and th physical health.
+
+
+```{r}
+ph_vfc<-brfss2013%>% group_by(vgtlfrt) %>% summarise(mean_phlth=mean(physhlth))
+ph_vfc
+```
+
+
+There's a difference of Number Of Days Physical Health Not Good, if we look at the means the difference is almost more than one day of physical health not good for those who "consume vegetables or fruits less than 1 time per day". Actually the mean for the people who "Consume fruits and vegetables one or more times per day" is the lowest among those calculated before.
+
+Let's visualize the results.
+
+
+```{r}
+ggplot(ph_vfc, aes(x=vgtlfrt,y=mean_phlth,fill=(vgtlfrt=="VF1"))) +geom_bar(stat='identity') + ggtitle('Do people who consume vegetables and fruits have better physical health?') + xlab('Consume vegetables and fruits 1 Or More Times Per Day') + ylab('Days with poor physical health') +labs(fill="V1")
+```
+
+In blue we can see the bar which represents the mean of days of poor physical health of the people who "consume vegetables and fruits 1 or more times per day", and as we calculate before is smaller than the rest of the bars.
+
+Finally let's take a look to the relation between the consume of vegetables and fruits one or more times per day and the general health.
+
+
+```{r}
+genhlth_vfc<-table(brfss2013$vgtlfrt,brfss2013$genhlth)
+genhlth_vfc
+```
+
+Let's compute the proportions to make a better analysis.
+
+
+```{r}
+prop.table(genhlth_vfc,1)
+```
+
+As we can see the percent of people who "consume vegetables and fruits one or more times per day" and have an "Excellent" general health is approximately 21\% and the percent of people who "consume vegetables and fruits one or more times per day" who have a "Very good" general health is approximately 35\%. Those percents are higher that the percents of the sample that "consume vegetables and fruits less than 1 time per day". On the other hand the percent of people who "consume vegetables and fruits one or more times per day" and have a general status of "Fair" or "Poor" is smaller, which tell us once again that the consumption of vegetables and fruits is very important for our health.
+
+Let's take a look to the graph.
+
+
+```{r}
+ggplot(brfss2013, aes(x = vgtlfrt, fill = genhlth)) + geom_bar()+xlab("Consume Vegetables and Fruits 1 Or More Times Per Day")+ylab("Frequencies")+labs(fill="General Health")
+
+```
+
+In conclusion the consumption of fruits and vegetables is very important to have a better physically and general health.
